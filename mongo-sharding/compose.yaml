@@ -1,29 +1,10 @@
 name: mongo-sharding
 
 services:
-  pymongo_api:
-    container_name: pymongo-api
-    build:
-      context: api_app
-      dockerfile: Dockerfile
-    image: kazhem/pymongo_api:1.0.0
-    depends_on:
-      - mongos1
-      - mongo-cfgsrv1
-      - mongo-shard1-1
-      - mongo-shard2-1
-    ports:
-      - 8080:8080
-    volumes:
-      - pymongo_api_data:/data/db
-    environment:
-      MONGODB_URL: "mongodb://mongodb1"
-      MONGODB_DATABASE_NAME: "somedb"
-
   mongos1:
     hostname: mongodb1
     container_name: mongos1
-    image: dh-mirror.gitverse.ru/mongo:latest
+    image: &mongo_img dh-mirror.gitverse.ru/mongo:latest
     command: mongos --bind_ip 0.0.0.0 --configdb configrs/mongo-cfgsrv1:27019
     depends_on:
       - mongo-cfgsrv1
@@ -34,24 +15,40 @@ services:
 
   mongo-cfgsrv1:
     container_name: mongo-cfgsrv1
-    image: dh-mirror.gitverse.ru/mongo:latest
+    image: *mongo_img
     command: mongod --configsvr --replSet configrs
     volumes:
       - mongo_cfgsrv1_data:/data/db
 
   mongo-shard1-1:
     container_name: mongo-shard1-1
-    image: dh-mirror.gitverse.ru/mongo:latest
+    image: *mongo_img
     command: mongod --shardsvr --replSet shard1rs
     volumes:
       - mongo_shard1_1_data:/data/db
 
   mongo-shard2-1:
     container_name: mongo-shard2-1
-    image: dh-mirror.gitverse.ru/mongo:latest
+    image: *mongo_img
     command: mongod --shardsvr --replSet shard2rs
     volumes:
       - mongo_shard2_1_data:/data/db
+
+  pymongo-api:
+    container_name: pymongo-api
+    build:
+      context: api_app
+      dockerfile: Dockerfile
+    image: kazhem/pymongo_api:1.0.0
+    depends_on:
+      - mongos1
+    ports:
+      - 8080:8080
+    volumes:
+      - pymongo_api_data:/data/db
+    environment:
+      MONGODB_URL: "mongodb://mongodb1"
+      MONGODB_DATABASE_NAME: "somedb"
 
 volumes:
   pymongo_api_data:
