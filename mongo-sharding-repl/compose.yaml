@@ -1,0 +1,125 @@
+name: mongo-sharding-repl
+
+services:
+  mongos1:
+    hostname: mongodb1
+    container_name: mongos1
+    image: &mongo_img dh-mirror.gitverse.ru/mongo:latest
+    command: &mongos_cmd >-
+      mongos --bind_ip 0.0.0.0 --configdb
+      configrs/mongo-cfgsrv1:27019,mongo-cfgsrv2:27019,mongo-cfgsrv3:27019
+    depends_on: &mongos_dependencies
+      - mongo-cfgsrv1
+      - mongo-cfgsrv2
+      - mongo-cfgsrv3
+      - mongo-shard1-1
+      - mongo-shard1-2
+      - mongo-shard1-3
+      - mongo-shard2-1
+      - mongo-shard2-2
+      - mongo-shard2-3
+    volumes:
+      - mongos1_data:/data/db
+
+  mongos2:
+    hostname: mongodb2
+    container_name: mongos2
+    image: *mongo_img
+    command: *mongos_cmd
+    depends_on: *mongos_dependencies
+    volumes:
+      - mongos2_data:/data/db
+
+  mongo-cfgsrv1:
+    container_name: mongo-cfgsrv1
+    image: *mongo_img
+    command: &mongo_cfgsrv_cmd mongod --configsvr --replSet configrs
+    volumes:
+      - mongo_cfgsrv1_data:/data/db
+
+  mongo-cfgsrv2:
+    container_name: mongo-cfgsrv2
+    image: *mongo_img
+    command: *mongo_cfgsrv_cmd
+    volumes:
+      - mongo_cfgsrv2_data:/data/db
+
+  mongo-cfgsrv3:
+    container_name: mongo-cfgsrv3
+    image: *mongo_img
+    command: *mongo_cfgsrv_cmd
+    volumes:
+      - mongo_cfgsrv3_data:/data/db
+
+  mongo-shard1-1:
+    container_name: mongo-shard1-1
+    image: *mongo_img
+    command: &mongo_shard1_cmd mongod --shardsvr --replSet shard1rs
+    volumes:
+      - mongo_shard1_1_data:/data/db
+
+  mongo-shard1-2:
+    container_name: mongo-shard1-2
+    image: *mongo_img
+    command: *mongo_shard1_cmd
+    volumes:
+      - mongo_shard1_2_data:/data/db
+
+  mongo-shard1-3:
+    container_name: mongo-shard1-3
+    image: *mongo_img
+    command: *mongo_shard1_cmd
+    volumes:
+      - mongo_shard1_3_data:/data/db
+
+  mongo-shard2-1:
+    container_name: mongo-shard2-1
+    image: *mongo_img
+    command: &mongo_shard2_cmd mongod --shardsvr --replSet shard2rs
+    volumes:
+      - mongo_shard2_1_data:/data/db
+
+  mongo-shard2-2:
+    container_name: mongo-shard2-2
+    image: *mongo_img
+    command: *mongo_shard2_cmd
+    volumes:
+      - mongo_shard2_2_data:/data/db
+
+  mongo-shard2-3:
+    container_name: mongo-shard2-3
+    image: *mongo_img
+    command: *mongo_shard2_cmd
+    volumes:
+      - mongo_shard2_3_data:/data/db
+
+  pymongo-api:
+    container_name: pymongo-api
+    build:
+      context: api_app
+      dockerfile: Dockerfile
+    image: kazhem/pymongo_api:1.0.0
+    depends_on:
+      - mongos1
+      - mongos2
+    ports:
+      - 8080:8080
+    volumes:
+      - pymongo_api_data:/data/db
+    environment:
+      MONGODB_URL: "mongodb://mongodb1"
+      MONGODB_DATABASE_NAME: "somedb"
+
+volumes:
+  pymongo_api_data:
+  mongos1_data:
+  mongos2_data:
+  mongo_cfgsrv1_data:
+  mongo_cfgsrv2_data:
+  mongo_cfgsrv3_data:
+  mongo_shard1_1_data:
+  mongo_shard1_2_data:
+  mongo_shard1_3_data:
+  mongo_shard2_1_data:
+  mongo_shard2_2_data:
+  mongo_shard2_3_data:
